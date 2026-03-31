@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日運動通知產生器</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface-2: #222222;
+    --surface-hover: #272727;
+    --border: rgba(255,255,255,0.08);
+    --border-mid: rgba(255,255,255,0.15);
+    --text: #f0ede8;
+    --text-muted: #888880;
+    --text-hint: #555550;
+
+    --rhythm-bg: #0d1a2e;
+    --rhythm-border: #1e3a6e;
+    --rhythm-text: #7eb3f5;
+    --rhythm-accent: #4a90d9;
+
+    --core-bg: #0a1f14;
+    --core-border: #1a4a2a;
+    --core-text: #6dcc96;
+    --core-accent: #3aaa6a;
+
+    --burn-bg: #1f1200;
+    --burn-border: #4a2e00;
+    --burn-text: #f5b84a;
+    --burn-accent: #e09020;
+
+    --radius: 10px;
+    --radius-lg: 14px;
+  }
+
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem 3rem;
+  }
+
+  .page { max-width: 560px; margin: 0 auto; }
+
+  .page-header { margin-bottom: 1.75rem; }
+  .page-title { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; color: var(--text); margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: var(--text-muted); }
+
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    padding: 1.25rem;
+    margin-bottom: 10px;
+  }
+
+  .section-label {
+    font-size: 11px; font-weight: 500; color: var(--text-hint);
+    text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px;
+  }
+
+  .sport-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .sport-card {
+    padding: 12px 10px; border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface-2); cursor: pointer; transition: all 0.15s; user-select: none;
+  }
+  .sport-card:hover { border-color: var(--border-mid); background: var(--surface-hover); }
+  .sport-card.sel-r { background: var(--rhythm-bg); border-color: var(--rhythm-border); }
+  .sport-card.sel-c { background: var(--core-bg); border-color: var(--core-border); }
+  .sport-card.sel-b { background: var(--burn-bg); border-color: var(--burn-border); }
+
+  .sport-header { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .sport-icon { font-size: 15px; }
+  .sport-name { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+  .sport-card.sel-r .sport-name { color: var(--rhythm-text); }
+  .sport-card.sel-c .sport-name { color: var(--core-text); }
+  .sport-card.sel-b .sport-name { color: var(--burn-text); }
+
+  .sport-items { list-style: none; }
+  .sport-items li {
+    font-size: 11px; color: var(--text-hint);
+    padding: 2px 0; display: flex; align-items: center; gap: 5px; line-height: 1.4;
+  }
+  .sport-items li::before { content: '·'; }
+  .sport-card.sel-r .sport-items li { color: var(--rhythm-accent); }
+  .sport-card.sel-c .sport-items li { color: var(--core-accent); }
+  .sport-card.sel-b .sport-items li { color: var(--burn-accent); }
+
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field label {
+    display: block; font-size: 11px; color: var(--text-hint);
+    margin-bottom: 5px; letter-spacing: 0.04em; text-transform: uppercase;
+  }
+
+  input[type="text"], input[type="time"] {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--border);
+    border-radius: var(--radius); font-size: 13px; font-family: 'Noto Sans TC', sans-serif;
+    background: var(--surface-2); color: var(--text); outline: none;
+    transition: border-color 0.15s; color-scheme: dark;
+  }
+  input:focus { border-color: var(--border-mid); }
+  input::placeholder { color: var(--text-hint); }
+
+  .callout-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+  .callout-btn {
+    padding: 9px 10px; border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface-2); cursor: pointer; font-size: 12px;
+    font-family: 'Noto Sans TC', sans-serif; color: var(--text-muted);
+    text-align: left; line-height: 1.5; transition: all 0.15s;
+  }
+  .callout-btn:hover { border-color: var(--border-mid); background: var(--surface-hover); }
+  .callout-btn.selected { background: var(--core-bg); border-color: var(--core-border); color: var(--core-text); }
+
+  .preview-box {
+    background: var(--surface-2); border-radius: var(--radius); padding: 14px;
+    border: 1px solid var(--border); font-size: 13px; line-height: 1.9;
+    white-space: pre-wrap; color: var(--text); font-family: 'Noto Sans TC', sans-serif; min-height: 90px;
+  }
+
+  .btn-copy {
+    width: 100%; margin-top: 10px; padding: 11px; border: 1px solid var(--border-mid);
+    border-radius: var(--radius); background: var(--surface-2); color: var(--text);
+    font-size: 14px; font-weight: 500; font-family: 'Noto Sans TC', sans-serif;
+    cursor: pointer; transition: all 0.18s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-copy:hover { background: var(--surface-hover); border-color: rgba(255,255,255,0.25); }
+  .btn-copy.copied { background: var(--core-bg); border-color: var(--core-border); color: var(--core-text); }
+
+  .hint-text { font-size: 11px; color: var(--text-hint); text-align: center; margin-top: 7px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="page-header">
+    <div class="page-title">每日運動通知</div>
+    <div class="page-sub">設定好後複製訊息，貼到 Slack Thread 💪</div>
+  </div>
+
+  <div class="card">
+    <div class="section-label">運動類型</div>
+    <div class="sport-grid">
+      <div class="sport-card" data-sport="律動運動" data-sel="sel-r" data-emoji="🎵" onclick="selectSport(this)">
+        <div class="sport-header"><span class="sport-icon">🎵</span><span class="sport-name">律動運動</span></div>
+        <ul class="sport-items">
+          <li>Zumba</li><li>有氧舞蹈</li><li>韓舞 / K-pop</li><li>啦啦隊舞</li><li>排舞</li>
+        </ul>
+      </div>
+      <div class="sport-card sel-c" data-sport="核心運動" data-sel="sel-c" data-emoji="💪" onclick="selectSport(this)">
+        <div class="sport-header"><span class="sport-icon">💪</span><span class="sport-name">核心運動</span></div>
+        <ul class="sport-items">
+          <li>Plank 棒式</li><li>橋式 / 捲腹</li><li>死蟲式</li><li>鳥狗式</li><li>瑜珈流</li>
+        </ul>
+      </div>
+      <div class="sport-card" data-sport="燃脂運動" data-sel="sel-b" data-emoji="🔥" onclick="selectSport(this)">
+        <div class="sport-header"><span class="sport-icon">🔥</span><span class="sport-name">燃脂運動</span></div>
+        <ul class="sport-items">
+          <li>HIIT / Tabata</li><li>Combat 搏擊</li><li>Burn & Tone</li><li>波比跳 / 登山式</li><li>開合跳 / 高膝跑</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-label">運動時間與備註</div>
+    <div class="row">
+      <div class="field">
+        <label>開始時間</label>
+        <input type="time" id="sportTime" value="12:00" oninput="updatePreview()">
+      </div>
+      <div class="field">
+        <label>附加說明（選填）</label>
+        <input type="text" id="note" placeholder="例：教學影片連結" oninput="updatePreview()">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-label">結尾號召語</div>
+    <div class="callout-grid">
+      <div class="callout-btn selected" data-idx="0" onclick="selectCallout(this)">久坐傷身！離開椅子才是人生贏家 🏆</div>
+      <div class="callout-btn" data-idx="1" onclick="selectCallout(this)">你的椅子已經跟你在一起夠久了，分手吧 💔</div>
+      <div class="callout-btn" data-idx="2" onclick="selectCallout(this)">動一動，腦袋轉得快，下午績效爆表 📈</div>
+      <div class="callout-btn" data-idx="3" onclick="selectCallout(this)">站起來動一動！重力不是藉口 🚀</div>
+    </div>
+    <input type="text" id="customCallout" placeholder="或輸入自訂號召語..." oninput="onCustomCallout()">
+  </div>
+
+  <div class="card">
+    <div class="section-label">訊息預覽</div>
+    <div class="preview-box" id="previewMain"></div>
+    <button class="btn-copy" id="copyBtn" onclick="copyMsg()">
+      <span>⎘</span><span id="copyLabel">複製訊息</span>
+    </button>
+    <div class="hint-text">複製後貼到 Slack Thread 即可</div>
+  </div>
+
+</div>
+<script>
+  let sport = '核心運動', sportEmoji = '💪', calloutIdx = 0;
+  const callouts = [
+    '久坐傷身！離開椅子才是人生贏家 🏆',
+    '你的椅子已經跟你在一起夠久了，分手吧 💔',
+    '動一動，腦袋轉得快，下午績效爆表 📈',
+    '站起來動一動！重力不是藉口 🚀'
+  ];
+  function selectSport(el) {
+    document.querySelectorAll('.sport-card').forEach(c => c.classList.remove('sel-r','sel-c','sel-b'));
+    el.classList.add(el.dataset.sel);
+    sport = el.dataset.sport; sportEmoji = el.dataset.emoji; updatePreview();
+  }
+  function selectCallout(el) {
+    document.querySelectorAll('.callout-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected'); calloutIdx = parseInt(el.dataset.idx);
+    document.getElementById('customCallout').value = ''; updatePreview();
+  }
+  function onCustomCallout() {
+    document.querySelectorAll('.callout-btn').forEach(b => b.classList.remove('selected'));
+    calloutIdx = -1; updatePreview();
+  }
+  function getCallout() {
+    const c = document.getElementById('customCallout').value.trim();
+    return c || callouts[Math.max(0, calloutIdx)];
+  }
+  function buildMessage() {
+    const time = document.getElementById('sportTime').value;
+    const note = document.getElementById('note').value.trim();
+    let msg = `*${sportEmoji} 今日${sport}開始囉！*\n\n*開始時間：* ${time}\n`;
+    if (note) msg += `*說明：* ${note}\n`;
+    return msg + `\n${getCallout()}`;
+  }
+  function updatePreview() { document.getElementById('previewMain').textContent = buildMessage(); }
+  function copyMsg() {
+    navigator.clipboard.writeText(buildMessage()).then(() => {
+      const btn = document.getElementById('copyBtn');
+      document.getElementById('copyLabel').textContent = '已複製！貼到 Slack 吧 ✓';
+      btn.classList.add('copied');
+      setTimeout(() => { document.getElementById('copyLabel').textContent = '複製訊息'; btn.classList.remove('copied'); }, 2500);
+    });
+  }
+  updatePreview();
+</script>
+</body>
+</html>
